@@ -29,7 +29,6 @@ import sys
 from multiprocessing import Pool
 from typing import Optional
 
-import matplotlib.pylab as plt
 import numpy as np
 from parallel_abus.aBUS_SuS import aBUS_SuS, aBUS_SuS_parallel
 from parallel_abus.aBUS_SuS.utils import TimerContext
@@ -39,7 +38,6 @@ from parallel_abus.aBUS_SuS.utils import TimerContext
 from parallel_abus.ERADistNataf import ERADist
 from scipy.stats import multivariate_normal as mvn
 
-plt.close("all")
 
 # =================================================================
 # define the prior
