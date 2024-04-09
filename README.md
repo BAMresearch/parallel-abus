@@ -40,8 +40,7 @@ Examples using this package are documented in the `./tests/` folder. The number 
 ```console
 python ./tests/test_main_example_3_2DOF.py 5
 ```
-
-Runs inference with parallel aBUS on 5 processes.
+runs inference with parallel aBUS on 5 processes.
 
 
 A more comprehensive example is presented in `./example/bayesian_inference.py`. Here, an engineering model of a reinforced concrete beam including an OpenSees finite element model is updated. Details on this example are found in this contribution:
