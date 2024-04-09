@@ -3,7 +3,7 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/parallel-abus.svg)](https://pypi.org/project/parallel-abus)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parallel-abus.svg)](https://pypi.org/project/parallel-abus)
 
-<!-- [![DOI](https://zenodo.org/badge/357505574.svg)](https://zenodo.org/badge/latestdoi/357505574) -->
+[![DOI](https://zenodo.org/badge/784155811.svg)](https://zenodo.org/doi/10.5281/zenodo.10948540)
 
 -----
 
@@ -33,7 +33,7 @@ pip install parallel-abus
 
 ## Usage
 
-Usage is exemplified in the corresponding GitHub project of this package.
+Usage is exemplified in the corresponding [GitHub project](https://github.com/BAMresearch/parallel-abus) of this package.
 
 Examples using this package are documented in the `./tests/` folder. The number of processes can be specified as a command line parameter, for example:
 
