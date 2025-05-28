@@ -7,4 +7,4 @@
 # import ERADistNataf
 
 from .ERADistNataf import ERADist, ERANataf
-from .aBUS_SuS import aBUS_SuS, aBUS_SuS_parallel
+from .aBUS_SuS import aBUS_SuS, aBUS_SuS_parallel, ErrorWithData
