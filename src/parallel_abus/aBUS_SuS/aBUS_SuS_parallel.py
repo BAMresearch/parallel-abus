@@ -43,7 +43,6 @@ import multiprocessing
 from functools import partial
 from typing import Any, Tuple
 
-import dill
 import numpy as np
 import scipy as sp
 
@@ -192,20 +191,6 @@ def aBUS_SuS_parallel(
         unordered_results = pool.map(
             indexed_log_likelihood_fun, list(zip(range(n_samples), x))
         )
-        # unordered_results = pool.map(
-        #     indexed_log_likelihood_fun, list(zip(range(n_samples), x))
-        # )
-
-        # use library `dill` to be able to pickle the local function indexed_log_likelihood_fun to send it to pool.map
-        # unordered_results = pool.map(
-        #     eval(dill.source.getsource(indexed_log_likelihood_fun)),
-        #     list(zip(range(n_samples), x)),
-        # )
-
-        # unordered_results = []
-        # for i, x in enumerate(u):
-        #     result = pool.apply_async(indexed_log_likelihood_fun, (i, x))
-        #     unordered_results.append(result)
 
         valid_unordered_results = [
             r for r in unordered_results if (r is not None) and (r[0] is not None)
