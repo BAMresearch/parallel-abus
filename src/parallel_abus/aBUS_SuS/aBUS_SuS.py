@@ -51,7 +51,36 @@ Based on:
 """
 
 
-def aBUS_SuS(N, p0, log_likelihood, distr):
+def aBUS_SuS(N, p0, log_likelihood, distr, max_it: int = 50):
+    """Run aBUS-SuS algorithm for Bayesian updating.
+
+    This function implements the aBUS-SuS (Bayesian Updating with Subset Simulation)
+    algorithm for Bayesian updating. It uses subset simulation to efficiently sample
+    from the posterior distribution.
+
+    Args:
+        N (int): Number of samples per subset level. Must be such that N*p0 and 1/p0 are integers.
+        p0 (float): Probability of each subset level. Must be between 0 and 1.
+        log_likelihood (Callable): Log-likelihood function that takes parameters and returns log-likelihood.
+        distr (Union[ERANataf, List[ERADist]]): Distribution object. Can be either:
+            - ERANataf: For dependent random variables
+            - List[ERADist]: For independent random variables
+        max_it (int, optional): Maximum number of iterations. Defaults to 50.
+
+    Returns:
+        Tuple[np.ndarray, Dict[str, List[np.ndarray]], List[np.ndarray], float, float, np.ndarray, float]:
+            - h: Array of intermediate levels
+            - samplesU: Dictionary containing ordered samples in standard normal space
+            - samplesX: List of samples in physical space
+            - logcE: Log of the evidence
+            - c: scaling constant that holds 1/c >= Lmax
+            - sigma: last spread of the proposal
+            - lambda_par: Final scaling parameter
+
+    Raises:
+        RuntimeError: If N*p0 or 1/p0 are not integers
+        RuntimeError: If distr is not a valid ERANataf or ERADist object
+    """
     if (N * p0 != np.fix(N * p0)) or (1 / p0 != np.fix(1 / p0)):
         raise RuntimeError(
             "N*p0 and 1/p0 must be positive integers. Adjust N and p0 accordingly"
@@ -90,7 +119,6 @@ def aBUS_SuS(N, p0, log_likelihood, distr):
     # initialization of variables
     i = 0  # number of conditional level
     lam = 0.6  # initial scaling parameter \in (0,1)
-    max_it = 20  # maximum number of iterations
     samplesU = {"seeds": list(), "total": list()}
     samplesX = list()
     #

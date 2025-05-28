@@ -115,7 +115,41 @@ def aBUS_SuS_parallel(
     pool: multiprocessing.pool.Pool,
     opc: str = "b",
     decrease_dependency: bool = True,
+    max_it: int = 50,
 ):
+    """Run parallel aBUS-SuS algorithm for Bayesian updating.
+
+    This function implements the parallel version of the aBUS-SuS (Bayesian Updating with Subset Simulation)
+    algorithm for Bayesian updating. It uses multiprocessing to parallelize the evaluation of the
+    log-likelihood function.
+
+    Args:
+        N (int): Number of samples per subset level. Must be such that N*p0 and 1/p0 are integers.
+        p0 (float): Probability of each subset level. Must be between 0 and 1.
+        indexed_log_likelihood_fun (Callable): Function that takes (index, theta) and returns (index, log_likelihood).
+            The index is used to track the order of samples.
+        distr (Union[ERANataf, List[ERADist]]): Distribution object. Can be either:
+            - ERANataf: For dependent random variables
+            - List[ERADist]: For independent random variables
+        pool (multiprocessing.pool.Pool): Multiprocessing pool for parallel evaluation
+        opc (str, optional): Option for the algorithm. Defaults to "b".
+        decrease_dependency (bool, optional): Whether to decrease dependency between samples. Defaults to True.
+        max_it (int, optional): Maximum number of iterations. Defaults to 50.
+
+    Returns:
+        Tuple[np.ndarray, Dict[str, List[np.ndarray]], List[np.ndarray], float, float, np.ndarray, float]:
+            - h: Array of intermediate levels
+            - samplesU: Dictionary containing ordered samples in standard normal space
+            - samplesX: List of samples in physical space
+            - logcE: Log of the evidence
+            - c: scaling constant that holds 1/c >= Lmax
+            - sigma: last spread of the proposal
+            - lambda_par: Final scaling parameter
+
+    Raises:
+        ValueError: If N*p0 or 1/p0 are not integers
+        RuntimeError: If distr is not a valid ERANataf or ERADist object
+    """
     if (N * p0 != np.fix(N * p0)) or (1 / p0 != np.fix(1 / p0)):
         raise ValueError(
             "N*p0 and 1/p0 must be positive integers. Adjust N and p0 accordingly"
@@ -205,7 +239,6 @@ def aBUS_SuS_parallel(
     # initialization of variables
     i = 0  # number of conditional level
     lam = 0.6  # initial scaling parameter \in (0,1)
-    max_it = 50  # maximum number of iterations
     samplesU = {"seeds": list(), "total": list()}
     samplesX = list()
     #
