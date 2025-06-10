@@ -51,7 +51,7 @@ from .aCS_aBUS_parallel import aCS_aBUS_batches as aCS_aBUS
 from .utils import TimerContext
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.NullHandler())
 
 
 REALMAX = np.finfo(np.double).max
@@ -243,7 +243,7 @@ def aBUS_SuS_parallel(
         logl_hat = max(leval)  # =-log(c) (Ref.1 Alg.5 Part.3)
         logger.info(f"Initial maximum log-likelihood: {logl_hat}")
         if logl_hat > REALMAX:
-            logger.warn(
+            logger.warning(
                 f"Numerically unstable: maximum Likelihood ({logl_hat:.4g}) > {MAX_LOG:.4g}"
             )
 
@@ -344,7 +344,7 @@ def aBUS_SuS_parallel(
                 print(f" Modified threshold level {i} = {h[i]:.4g}")
                 logger.info(f" Modified threshold level {i} = {h[i]:.4g}")
                 if logl_hat > REALMAX:
-                    logger.warn(
+                    logger.warning(
                         f"Numerically unstable: maximum Likelihood ({logl_hat:.4g}) > {MAX_LOG:.4g}"
                     )
 
@@ -421,11 +421,11 @@ def aBUS_SuS_parallel(
     c = 1 / np.exp(logl_hat)  # l = -log(c) = 1/max(likelihood)
     logcE = log_p_acc + logl_hat  # exp(l) = max(likelihood)
 
-    logging.debug(f"prob: {(array_to_string(prob))}")
-    logging.debug(f"p_acc: {np.exp(log_p_acc)}")
-    logging.debug(f"logl_hat: {logl_hat}")
-    logging.debug(f"c: {c}")
-    logging.debug(f"logcE: {logcE}")
+    logger.debug(f"prob: {(array_to_string(prob))}")
+    logger.debug(f"p_acc: {np.exp(log_p_acc)}")
+    logger.debug(f"logl_hat: {logl_hat}")
+    logger.debug(f"c: {c}")
+    logger.debug(f"logcE: {logcE}")
 
     # import IPython
     # IPython.embed()

@@ -12,6 +12,7 @@
 - [Introduction](#introduction)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Logging](#logging)
 - [License](#license)
 
 ## Introduction
@@ -54,6 +55,44 @@ An easy way to get this example running is to install its dependencies via [Poet
 ```console
 poetry install
 ```
+
+## Logging
+
+The parallel_abus library uses Python's standard logging module. By default, the library will not output any log messages unless you configure logging in your application.
+
+### Basic Usage
+
+```python
+import logging
+import parallel_abus
+
+# Enable INFO level logging to see algorithm progress
+logging.basicConfig(level=logging.INFO)
+
+# Or use the library's configuration helper
+parallel_abus.configure_logging(level=logging.INFO)
+```
+
+### Controlling Library Logging
+
+```python
+# Enable only WARNING and ERROR messages
+parallel_abus.configure_logging(level=logging.WARNING)
+
+# Disable all library logging
+parallel_abus.disable_logging()
+
+# Custom handler example
+handler = logging.FileHandler('parallel_abus.log')
+parallel_abus.configure_logging(level=logging.DEBUG, handler=handler)
+```
+
+### Log Levels
+
+- **DEBUG**: Detailed algorithm state, parameter values, and intermediate results
+- **INFO**: Key algorithm progress messages (default for examples)
+- **WARNING**: Potential issues or numerical instabilities
+- **ERROR**: Error conditions and exceptions
 
 ## License
 

@@ -56,7 +56,7 @@ from typing import Any, Callable, Iterable, Tuple, Optional
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.NullHandler())
 
 MAX_LINE_LENGTH = 200
 PRECISION = 8
@@ -684,7 +684,7 @@ def aCS_aBUS_batches(
         theta_chain += [res[0] for _, res in valid_unordered_results]
         leval_batch = [res[1] for _, res in valid_unordered_results]
         if np.any(np.isnan(np.array(leval))):
-            logger.warn("nan in likelihood evaluations")
+            logger.warning("nan in likelihood evaluations")
         leval += leval_batch
         acc += [res[2] for _, res in valid_unordered_results]
 

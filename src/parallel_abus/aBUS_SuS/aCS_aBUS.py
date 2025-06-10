@@ -1,5 +1,10 @@
+import logging
 import numpy as np
 import warnings
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 np.seterr(all='ignore')
 
 """
@@ -71,8 +76,10 @@ def aCS_aBUS(N, lambd_old, tau, theta_seeds, log_L_fun, logl_hat, h_LSF):
     opc = 'a'
     if opc == 'a': # 1a. sigma = ones(n,1)
         sigma_0 = np.ones(n)
+        logger.debug("Using standard deviation option 'a': sigma = ones(n,1)")
     elif opc == 'b': # 1b. sigma = sigma_hat (sample standard deviations)
         sigma_0 = np.std(theta_seeds, axis=1)
+        logger.debug("Using standard deviation option 'b': sigma = sample standard deviations")
     else:
         raise RuntimeError('Choose a or b')
 
@@ -84,7 +91,11 @@ def aCS_aBUS(N, lambd_old, tau, theta_seeds, log_L_fun, logl_hat, h_LSF):
     i         = 0                                          # index for adaptation of lambda
     sigma     = np.minimum(lambd[i]*sigma_0, np.ones(n))   # Ref. 1 Eq. 23
     rho       = np.sqrt(1-sigma**2)                        # Ref. 1 Eq. 24
-    mu_acc[i] = 0 
+    mu_acc[i] = 0
+    
+    logger.debug(f"Initial lambda: {lambd[0]:.4g}")
+    logger.debug(f"Initial sigma: {sigma}")
+    logger.debug(f"Initial rho: {rho}") 
 
     # b. apply conditional sampling
     for k in range(1, Ns+1):
@@ -129,14 +140,18 @@ def aCS_aBUS(N, lambd_old, tau, theta_seeds, log_L_fun, logl_hat, h_LSF):
             if Nchain[k-1] > 1:
                 # c. evaluate average acceptance rate
                 hat_acc[i] = mu_acc[i]/Na   # Ref. 1 Eq. 25
+                logger.debug(f"Chain {k}: Acceptance rate = {hat_acc[i]:.3f}")
             
                 # d. compute new scaling parameter
                 zeta       = 1/np.sqrt(i+1)   # ensures that the variation of lambda(i) vanishes
                 lambd[i+1] = np.exp(np.log(lambd[i]) + zeta*(hat_acc[i]-star_a))  # Ref. 1 Eq. 26
+                logger.debug(f"Updated lambda[{i+1}] = {lambd[i+1]:.4g}")
             
                 # update parameters
                 sigma = np.minimum(lambd[i+1]*sigma_0, np.ones(n))  # Ref. 1 Eq. 23
                 rho   = np.sqrt(1-sigma**2)                       # Ref. 1 Eq. 24
+                logger.debug(f"Updated sigma: {sigma}")
+                logger.debug(f"Updated rho: {rho}")
             
                 # update counter
                 i += 1
@@ -146,5 +161,8 @@ def aCS_aBUS(N, lambd_old, tau, theta_seeds, log_L_fun, logl_hat, h_LSF):
 
     # compute mean acceptance rate of all chains
     accrate = np.sum(acc)/(N-Ns)
+    
+    logger.debug(f"Final lambda: {new_lambda:.4g}")
+    logger.debug(f"Overall acceptance rate: {accrate:.3f}")
 
     return theta_chain, leval, new_lambda, sigma, accrate

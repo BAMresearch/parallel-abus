@@ -1,8 +1,12 @@
+import logging
 import numpy as np
 import scipy as sp
 
 from ..ERADistNataf import ERADist, ERANataf
 from .aCS_aBUS import aCS_aBUS
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 np.seterr(all="ignore")
 
@@ -129,13 +133,13 @@ def aBUS_SuS(N, p0, log_likelihood, distr, max_it: int = 50):
 
     # aBUS-SuS procedure
     # initial MCS step
-    print("Evaluating log-likelihood function ...\t", end="")
+    logger.info("Evaluating log-likelihood function ...")
     u_j = np.random.normal(size=(n, N))  # N samples from the prior distribution
     leval = [log_L_fun(u_j[:, i]) for i in range(N)]
     leval = np.array(leval)
-    print("Done!")
+    logger.info("Done!")
     logl_hat = max(leval)  # =-log(c) (Ref.1 Alg.5 Part.3)
-    print("Initial maximum log-likelihood: ", logl_hat)
+    logger.info(f"Initial maximum log-likelihood: {logl_hat}")
 
     # SuS stage
     h[i] = np.inf
@@ -166,7 +170,7 @@ def aBUS_SuS(N, p0, log_likelihood, distr, max_it: int = 50):
             prob[i - 1] = nF / N
         else:
             prob[i - 1] = p0
-        print("\n-Threshold level ", i, " = ", h[i])
+        logger.info(f"Threshold level {i} = {h[i]:.4g}")
 
         # select seeds and randomize the ordering (to avoid bias)
         seeds = u_j_sort[:, :nF]
@@ -178,20 +182,15 @@ def aBUS_SuS(N, p0, log_likelihood, distr, max_it: int = 50):
         u_j, leval, lam, sigma, accrate = aCS_aBUS(
             N, lam, h[i], rnd_seeds, log_L_fun, logl_hat, h_LSF
         )
-        print(
-            "\t*aCS lambda =",
-            lam,
-            "\t*aCS sigma =",
-            sigma[0],
-            "\t*aCS accrate =",
-            accrate,
-        )
+        logger.debug(f"*aCS lambda = {lam:.4g}")
+        logger.debug(f"*aCS sigma = {sigma[0]}")
+        logger.debug(f"*aCS accrate = {accrate:.2g}")
 
         # update the value of the scaling constant (Ref.1 Alg.5 Part.4d)
         l_new = max(logl_hat, max(leval))
         h[i] = h[i] - logl_hat + l_new
         logl_hat = l_new
-        print(" Modified threshold level ", i, "= ", h[i])
+        logger.info(f" Modified threshold level {i} = {h[i]:.4g}")
 
         # decrease the dependence of the samples (Ref.1 Alg.5 Part.4e)
         p = np.random.uniform(
