@@ -369,7 +369,7 @@ def aBUS_SuS_parallel(
         m = i
 
         # store final posterior samples
-        samplesU["total"].append(u_j)  # store final failure samples (non-ordered)
+        samplesU["total"].append(u_j.T)  # store final failure samples (non-ordered)
 
         # delete unnecesary data
         if m < max_it:
@@ -377,22 +377,31 @@ def aBUS_SuS_parallel(
             h = h[:m]
 
         # acceptance probability and evidence (Ref.1 Alg.5 Part.6and7)
-        p_acc = np.prod(prob)
+        log_p_acc = np.sum(np.log(prob))
         c = 1 / np.exp(logl_hat)  # l = -log(c) = 1/max(likelihood)
-        cE = p_acc * np.exp(logl_hat)  # exp(l) = max(likelihood)
+        logcE = log_p_acc + logl_hat  # exp(l) = max(likelihood)
 
         # transform the samples to the physical (original) space
 
         for i in range(m + 1):
-            pp = sp.stats.norm.cdf(samplesU["total"][i][-1, :])
-            samplesX.append(
-                np.concatenate(
-                    (std_to_physical(samplesU["total"][i][:-1, :]), pp.reshape(1, -1)),
-                    axis=0,
+            pp = sp.stats.norm.cdf(samplesU["total"][i][:, -1])
+            try:
+                samplesX.append(
+                    np.concatenate(
+                        (std_to_physical(samplesU["total"][i][:, :-1]), pp.reshape(-1, 1)),
+                        axis=1,
+                    )
                 )
-            )
+            except Exception as err2:
+                logger.error(
+                    f"Error transforming samples to physical space: {err2}\nThis error is ignored, since another one occured prior"
+                )
+                logger.error(f"samplesU['total'][i].shape: {samplesU['total'][i].shape}")
+                logger.error(f"samplesU['total'][i]: {samplesU['total'][i]}")
+                logger.error(f"pp: {pp}")
+                continue
 
-        data = dict(samplesX=samplesX, cE=cE, c=c)
+        data = dict(samplesX=samplesX, logcE=logcE, c=c)
         data["lambda"] = lam
         raise ErrorWithData(data, *err.args)
     # number of intermediate levels
