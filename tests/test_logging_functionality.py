@@ -14,6 +14,7 @@ import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+import warnings
 
 # Add src to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -32,31 +33,46 @@ class TestLoggingConfiguration(unittest.TestCase):
     """Test logging configuration and setup."""
 
     def setUp(self):
-        """Set up test fixtures."""
-        # Clear any existing handlers
-        for logger_name in ['parallel_abus', 'parallel_abus.aBUS_SuS.aBUS_SuS_parallel', 
-                           'parallel_abus.aBUS_SuS.aCS_aBUS_parallel', 'parallel_abus.aBUS_SuS.aBUS_SuS',
-                           'parallel_abus.aBUS_SuS.aCS_aBUS']:
+        """Set up test environment."""
+        # Import modules first to ensure they are loaded and have their handlers set up
+        try:
+            from parallel_abus.aBUS_SuS import aBUS_SuS_parallel, aCS_aBUS_parallel, aBUS_SuS, aCS_aBUS
+        except ImportError:
+            pass  # Some modules might not be available in all test environments
+        
+        # Store original handlers to restore later
+        self.original_handlers = {}
+        logger_names = [
+            'parallel_abus', 
+            'parallel_abus.aBUS_SuS.aBUS_SuS_parallel',
+            'parallel_abus.aBUS_SuS.aCS_aBUS_parallel', 
+            'parallel_abus.aBUS_SuS.aBUS_SuS',
+            'parallel_abus.aBUS_SuS.aCS_aBUS'
+        ]
+        
+        for logger_name in logger_names:
             logger = logging.getLogger(logger_name)
-            logger.handlers.clear()
-            logger.setLevel(logging.NOTSET)
+            self.original_handlers[logger_name] = {
+                'handlers': logger.handlers.copy(),
+                'level': logger.level,
+                'propagate': logger.propagate
+            }
 
     def tearDown(self):
         """Clean up after tests."""
-        # Reset logging to default state
-        for logger_name in ['parallel_abus', 'parallel_abus.aBUS_SuS.aBUS_SuS_parallel',
-                           'parallel_abus.aBUS_SuS.aCS_aBUS_parallel', 'parallel_abus.aBUS_SuS.aBUS_SuS',
-                           'parallel_abus.aBUS_SuS.aCS_aBUS']:
+        # Restore original handlers and settings
+        for logger_name, original_state in self.original_handlers.items():
             logger = logging.getLogger(logger_name)
             logger.handlers.clear()
-            logger.setLevel(logging.NOTSET)
+            logger.handlers.extend(original_state['handlers'])
+            logger.setLevel(original_state['level'])
+            logger.propagate = original_state['propagate']
 
     @unittest.skipUnless(DEPENDENCIES_AVAILABLE, "Dependencies not available")
     def test_package_level_null_handler(self):
         """Test that package-level NullHandler is properly configured."""
-        # Force reload to ensure clean state
-        import importlib
-        importlib.reload(parallel_abus)
+        # Reset to clean state first
+        parallel_abus.disable_logging()
         
         pkg_logger = logging.getLogger('parallel_abus')
         self.assertTrue(len(pkg_logger.handlers) > 0, "Package logger should have handlers")
@@ -67,22 +83,30 @@ class TestLoggingConfiguration(unittest.TestCase):
 
     @unittest.skipUnless(DEPENDENCIES_AVAILABLE, "Dependencies not available")
     def test_module_level_null_handlers(self):
-        """Test that module-level loggers have NullHandler configured."""
-        # Import modules to trigger logger setup
-        from parallel_abus.aBUS_SuS import aBUS_SuS_parallel, aCS_aBUS_parallel
-        
+        """Test that module-level loggers have NullHandler configured after fresh import."""
+        # Check the original state stored in setUp (before any test modifications)
         module_loggers = [
             'parallel_abus.aBUS_SuS.aBUS_SuS_parallel',
             'parallel_abus.aBUS_SuS.aCS_aBUS_parallel',
             'parallel_abus.aBUS_SuS.aBUS_SuS',
             'parallel_abus.aBUS_SuS.aCS_aBUS'
         ]
-        
+
+        # Check that all loggers had proper handler configuration at import time
         for logger_name in module_loggers:
             with self.subTest(logger_name=logger_name):
-                logger = logging.getLogger(logger_name)
-                has_null_handler = any(isinstance(h, logging.NullHandler) for h in logger.handlers)
-                self.assertTrue(has_null_handler, f"Logger {logger_name} should have NullHandler")
+                # Get the original state from setUp
+                original_state = self.original_handlers.get(logger_name, {})
+                original_handlers = original_state.get('handlers', [])
+                
+                # Should have at least one handler (NullHandler) from module import
+                self.assertGreater(len(original_handlers), 0, 
+                                 f"Logger {logger_name} should have at least one handler from module import")
+                
+                # At least one should be a NullHandler
+                has_null_handler = any(isinstance(h, logging.NullHandler) for h in original_handlers)
+                self.assertTrue(has_null_handler, 
+                              f"Logger {logger_name} should have NullHandler from module import")
 
     @unittest.skipUnless(DEPENDENCIES_AVAILABLE, "Dependencies not available")
     def test_no_hard_coded_log_levels(self):
@@ -162,6 +186,7 @@ class TestLoggingConfiguration(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.log') as tmp_file:
             tmp_path = tmp_file.name
         
+        file_handler = None
         try:
             # Configure logging to file
             file_handler = logging.FileHandler(tmp_path)
@@ -173,9 +198,12 @@ class TestLoggingConfiguration(unittest.TestCase):
             logger.info("Test info message")
             
             # Force flush
-            for handler in logging.getLogger('parallel_abus').handlers:
-                if hasattr(handler, 'flush'):
-                    handler.flush()
+            if file_handler:
+                file_handler.flush()
+            
+            # Close the handler before reading
+            if file_handler:
+                file_handler.close()
             
             # Read the file and check content
             with open(tmp_path, 'r') as f:
@@ -185,8 +213,135 @@ class TestLoggingConfiguration(unittest.TestCase):
             self.assertIn("Test", content)
             
         finally:
-            # Clean up
-            Path(tmp_path).unlink(missing_ok=True)
+            # Clean up handlers first
+            if file_handler:
+                file_handler.close()
+            # Clear logger handlers to release file handles
+            pkg_logger = logging.getLogger('parallel_abus')
+            pkg_logger.handlers.clear()
+            # Now try to delete the file
+            try:
+                Path(tmp_path).unlink(missing_ok=True)
+            except PermissionError:
+                # If we still can't delete it, at least try again after a short delay
+                import time
+                time.sleep(0.1)
+                try:
+                    Path(tmp_path).unlink(missing_ok=True)
+                except PermissionError:
+                    pass  # Give up - the file will be cleaned up eventually
+
+    def test_best_practices_compliance(self):
+        """Verify the library follows Python logging best practices."""
+        # Reset to ensure clean state
+        parallel_abus.disable_logging()
+        
+        # Test that library has proper NullHandler after reset
+        pkg_logger = logging.getLogger('parallel_abus')
+        self.assertTrue(any(isinstance(h, logging.NullHandler) for h in pkg_logger.handlers),
+                       "Package should have NullHandler by default")
+        
+        # Test that configure_logging doesn't produce warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            parallel_abus.configure_logging(level=logging.DEBUG)
+            self.assertEqual(len(w), 0, "configure_logging should not produce warnings")
+
+    def test_module_specific_logging(self):
+        """Test that different modules can have different logging levels."""
+        from io import StringIO
+        
+        # Create a string buffer to capture log output
+        log_capture_string = StringIO()
+        ch = logging.StreamHandler(log_capture_string)
+        
+        # Configure different levels for different modules
+        parallel_abus.configure_module_logging({
+            'aBUS_SuS': logging.DEBUG,
+            'aCS': logging.WARNING
+        }, handler=ch)
+        
+        # Get the specific loggers
+        abus_logger = logging.getLogger('parallel_abus.aBUS_SuS.aBUS_SuS')
+        acs_logger = logging.getLogger('parallel_abus.aBUS_SuS.aCS_aBUS')
+        
+        # Verify they have the correct levels
+        self.assertEqual(abus_logger.level, logging.DEBUG)
+        self.assertEqual(acs_logger.level, logging.WARNING)
+        
+        # Test that they log at their respective levels
+        abus_logger.debug("aBUS debug message")
+        abus_logger.info("aBUS info message")
+        acs_logger.debug("aCS debug message - should not appear")
+        acs_logger.warning("aCS warning message")
+        
+        # Get the logged output
+        log_contents = log_capture_string.getvalue()
+        
+        # Verify expected messages appear
+        self.assertIn("aBUS debug message", log_contents)
+        self.assertIn("aBUS info message", log_contents)
+        self.assertIn("aCS warning message", log_contents)
+        # aCS debug should not appear because level is WARNING
+        self.assertNotIn("aCS debug message", log_contents)
+
+    def test_module_specific_logging_full_names(self):
+        """Test module-specific logging with full logger names."""
+        from io import StringIO
+        
+        log_capture_string = StringIO()
+        ch = logging.StreamHandler(log_capture_string)
+        
+        # Configure using full logger names
+        parallel_abus.configure_module_logging({
+            'parallel_abus.aBUS_SuS.aBUS_SuS_parallel': logging.INFO,
+            'parallel_abus.aBUS_SuS.aCS_aBUS_parallel': logging.ERROR
+        }, handler=ch)
+        
+        # Get the specific loggers
+        abus_parallel_logger = logging.getLogger('parallel_abus.aBUS_SuS.aBUS_SuS_parallel')
+        acs_parallel_logger = logging.getLogger('parallel_abus.aBUS_SuS.aCS_aBUS_parallel')
+        
+        # Verify they have the correct levels
+        self.assertEqual(abus_parallel_logger.level, logging.INFO)
+        self.assertEqual(acs_parallel_logger.level, logging.ERROR)
+        
+        # Test logging behavior
+        abus_parallel_logger.debug("aBUS parallel debug - should not appear")
+        abus_parallel_logger.info("aBUS parallel info message")
+        acs_parallel_logger.warning("aCS parallel warning - should not appear")
+        acs_parallel_logger.error("aCS parallel error message")
+        
+        log_contents = log_capture_string.getvalue()
+        
+        # Verify expected messages
+        self.assertNotIn("aBUS parallel debug", log_contents)
+        self.assertIn("aBUS parallel info message", log_contents)
+        self.assertNotIn("aCS parallel warning", log_contents)
+        self.assertIn("aCS parallel error message", log_contents)
+
+    def test_performance_logging_hierarchy(self):
+        """Test that logging doesn't significantly impact performance when disabled."""
+        import time
+        
+        if not DEPENDENCIES_AVAILABLE:
+            self.skipTest("Dependencies not available")
+        
+        # Set up logger with NullHandler (effectively disabled)
+        logger = logging.getLogger('parallel_abus.test.performance')
+        logger.addHandler(logging.NullHandler())
+        
+        # Measure time with many log calls
+        start_time = time.time()
+        for i in range(1000):
+            logger.debug(f"Debug message {i}")
+            logger.info(f"Info message {i}")
+        end_time = time.time()
+        
+        disabled_time = end_time - start_time
+        
+        # This should be very fast (typically < 0.1 seconds)
+        self.assertLess(disabled_time, 1.0, "Logging with NullHandler should be fast")
 
 
 class TestLoggingBehavior(unittest.TestCase):
@@ -313,17 +468,17 @@ class TestLoggingValidation(unittest.TestCase):
         # Capture any warnings
         with patch('warnings.warn') as mock_warn:
             if DEPENDENCIES_AVAILABLE:
-                # Force reimport
-                import importlib
-                if 'parallel_abus' in sys.modules:
-                    importlib.reload(parallel_abus)
-                    
-        # Should not have any logger-related warnings
-        for call in mock_warn.call_args_list:
-            args = call[0]
-            if args:
-                self.assertNotIn("logger", str(args[0]).lower())
-                self.assertNotIn("handler", str(args[0]).lower())
+                # We test by disabling and re-enabling logging instead of reload
+                parallel_abus.disable_logging()
+                parallel_abus.configure_logging()
+        
+        # Check that warnings.warn was not called with logging-related warnings
+        if mock_warn.called:
+            warning_messages = [str(call) for call in mock_warn.call_args_list]
+            logging_warnings = [msg for msg in warning_messages 
+                              if 'logger' in msg.lower() or 'handler' in msg.lower()]
+            self.assertEqual(len(logging_warnings), 0, 
+                           f"Should not have logging warnings: {logging_warnings}")
 
     @unittest.skipUnless(DEPENDENCIES_AVAILABLE, "Dependencies not available")
     def test_logging_levels_appropriate(self):

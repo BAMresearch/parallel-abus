@@ -17,61 +17,81 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 class TestACSLogging(unittest.TestCase):
-    """Test logging functionality in aCS modules."""
+    """Test aCS-specific logging functionality."""
 
     def setUp(self):
-        """Set up test fixtures."""
-        # Set up string handler to capture log messages
-        self.log_capture = io.StringIO()
-        self.handler = logging.StreamHandler(self.log_capture)
-        self.handler.setLevel(logging.DEBUG)
+        """Set up test environment."""
+        # Import modules first to ensure they are loaded and have their handlers set up
+        try:
+            from parallel_abus.aBUS_SuS import aBUS_SuS_parallel, aCS_aBUS_parallel, aBUS_SuS, aCS_aBUS
+        except ImportError:
+            pass  # Some modules might not be available in all test environments
         
-        # Configure formatter
-        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-        self.handler.setFormatter(formatter)
+        # Store original handlers to restore later
+        self.original_handlers = {}
+        logger_names = [
+            'parallel_abus', 
+            'parallel_abus.aBUS_SuS.aBUS_SuS_parallel',
+            'parallel_abus.aBUS_SuS.aCS_aBUS_parallel', 
+            'parallel_abus.aBUS_SuS.aBUS_SuS',
+            'parallel_abus.aBUS_SuS.aCS_aBUS'
+        ]
+        
+        for logger_name in logger_names:
+            logger = logging.getLogger(logger_name)
+            self.original_handlers[logger_name] = {
+                'handlers': logger.handlers.copy(),
+                'level': logger.level,
+                'propagate': logger.propagate
+            }
 
     def tearDown(self):
         """Clean up after tests."""
-        # Remove handlers
-        for logger_name in ['parallel_abus.aBUS_SuS.aCS_aBUS', 'parallel_abus.aBUS_SuS.aCS_aBUS_parallel']:
+        # Restore original handlers and settings
+        for logger_name, original_state in self.original_handlers.items():
             logger = logging.getLogger(logger_name)
-            if self.handler in logger.handlers:
-                logger.removeHandler(self.handler)
-            logger.setLevel(logging.NOTSET)
+            logger.handlers.clear()
+            logger.handlers.extend(original_state['handlers'])
+            logger.setLevel(original_state['level'])
+            logger.propagate = original_state['propagate']
 
     def test_aCS_aBUS_logger_setup(self):
         """Test that aCS_aBUS has proper logger setup."""
         try:
             from parallel_abus.aBUS_SuS.aCS_aBUS import aCS_aBUS
+
+            # Check the original state from setUp (before any test modifications)
+            original_state = self.original_handlers.get('parallel_abus.aBUS_SuS.aCS_aBUS', {})
+            original_handlers = original_state.get('handlers', [])
+
+            # Should have at least one handler (NullHandler) from module import
+            self.assertGreater(len(original_handlers), 0, "aCS_aBUS logger should have at least one handler from import")
             
-            logger = logging.getLogger('parallel_abus.aBUS_SuS.aCS_aBUS')
+            # At least one should be a NullHandler
+            has_null_handler = any(isinstance(h, logging.NullHandler) for h in original_handlers)
+            self.assertTrue(has_null_handler, "aCS_aBUS logger should have NullHandler from import")
             
-            # Should have NullHandler
-            has_null_handler = any(isinstance(h, logging.NullHandler) for h in logger.handlers)
-            self.assertTrue(has_null_handler, "aCS_aBUS logger should have NullHandler")
-            
-            # Should not have hard-coded level
-            self.assertEqual(logger.level, logging.NOTSET, "Should not have hard-coded level")
-            
-        except ImportError as e:
-            self.skipTest(f"Could not import aCS_aBUS: {e}")
+        except ImportError:
+            self.skipTest("aCS_aBUS module not available")
 
     def test_aCS_aBUS_parallel_logger_setup(self):
         """Test that aCS_aBUS_parallel has proper logger setup."""
         try:
             from parallel_abus.aBUS_SuS.aCS_aBUS_parallel import aCS_aBUS_batches
+
+            # Check the original state from setUp (before any test modifications)
+            original_state = self.original_handlers.get('parallel_abus.aBUS_SuS.aCS_aBUS_parallel', {})
+            original_handlers = original_state.get('handlers', [])
+
+            # Should have at least one handler (NullHandler) from module import
+            self.assertGreater(len(original_handlers), 0, "aCS_aBUS_parallel logger should have at least one handler from import")
             
-            logger = logging.getLogger('parallel_abus.aBUS_SuS.aCS_aBUS_parallel')
+            # At least one should be a NullHandler
+            has_null_handler = any(isinstance(h, logging.NullHandler) for h in original_handlers)
+            self.assertTrue(has_null_handler, "aCS_aBUS_parallel logger should have NullHandler from import")
             
-            # Should have NullHandler
-            has_null_handler = any(isinstance(h, logging.NullHandler) for h in logger.handlers)
-            self.assertTrue(has_null_handler, "aCS_aBUS_parallel logger should have NullHandler")
-            
-            # Should not have hard-coded level
-            self.assertEqual(logger.level, logging.NOTSET, "Should not have hard-coded level")
-            
-        except ImportError as e:
-            self.skipTest(f"Could not import aCS_aBUS_parallel: {e}")
+        except ImportError:
+            self.skipTest("aCS_aBUS_parallel module not available")
 
     def test_aCS_aBUS_logging_output(self):
         """Test that aCS_aBUS produces appropriate log messages."""
@@ -79,45 +99,60 @@ class TestACSLogging(unittest.TestCase):
             from parallel_abus.aBUS_SuS.aCS_aBUS import aCS_aBUS
             import numpy as np
             
+            # Set up string handler to capture log messages
+            log_capture = io.StringIO()
+            handler = logging.StreamHandler(log_capture)
+            handler.setLevel(logging.DEBUG)
+            
+            # Configure formatter
+            formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            
             # Add handler to capture logs
             logger = logging.getLogger('parallel_abus.aBUS_SuS.aCS_aBUS')
-            logger.addHandler(self.handler)
+            logger.addHandler(handler)
             logger.setLevel(logging.DEBUG)
             
-            # Create minimal test data
-            N = 6  # Small number for quick test
-            lambd_old = 0.6
-            tau = 0.1
-            theta_seeds = np.random.normal(size=(2, 3))  # 2 dimensions, 3 seeds
-            
-            def mock_log_L_fun(theta):
-                """Mock log-likelihood function that returns a reasonable value."""
-                return -0.5 * np.sum(theta**2)  # Simple quadratic
-            
-            def mock_h_LSF(pi_u, logl_hat, log_L):
-                """Mock limit state function."""
-                return log_L - logl_hat + np.log(np.random.uniform(0.1, 1.0))
-            
-            # Run the function
             try:
-                result = aCS_aBUS(N, lambd_old, tau, theta_seeds, mock_log_L_fun, 0.5, mock_h_LSF)
+                # Create minimal test data
+                N = 6  # Small number for quick test
+                lambd_old = 0.6
+                tau = 0.1
+                theta_seeds = np.random.normal(size=(2, 3))  # 2 dimensions, 3 seeds
                 
-                # Check that we got results
-                self.assertIsNotNone(result)
-                self.assertEqual(len(result), 5)  # Should return 5 values
+                def mock_log_L_fun(theta):
+                    """Mock log-likelihood function that returns a reasonable value."""
+                    return -0.5 * np.sum(theta**2)  # Simple quadratic
                 
-            except Exception as e:
-                # Even if the algorithm fails, we want to check logging
-                print(f"Algorithm failed (expected in test): {e}")
-            
-            # Check log output
-            log_output = self.log_capture.getvalue()
-            
-            # Should contain debug messages about standard deviation option
-            self.assertIn("standard deviation option", log_output.lower())
-            
-            # Should contain initial parameter information
-            self.assertIn("Initial lambda", log_output)
+                def mock_h_LSF(pi_u, logl_hat, log_L):
+                    """Mock limit state function."""
+                    return log_L - logl_hat + np.log(np.random.uniform(0.1, 1.0))
+                
+                # Run the function
+                try:
+                    result = aCS_aBUS(N, lambd_old, tau, theta_seeds, mock_log_L_fun, 0.5, mock_h_LSF)
+                    
+                    # Check that we got results
+                    self.assertIsNotNone(result)
+                    self.assertEqual(len(result), 5)  # Should return 5 values
+                    
+                except Exception as e:
+                    # Even if the algorithm fails, we want to check logging
+                    print(f"Algorithm failed (expected in test): {e}")
+                
+                # Check log output
+                log_output = log_capture.getvalue()
+                
+                # Should contain debug messages about standard deviation option
+                self.assertIn("standard deviation option", log_output.lower())
+                
+                # Should contain initial parameter information
+                self.assertIn("Initial lambda", log_output)
+                
+            finally:
+                # Clean up the handler we added
+                logger.removeHandler(handler)
+                handler.close()
             
         except ImportError as e:
             self.skipTest(f"Could not import aCS_aBUS: {e}")

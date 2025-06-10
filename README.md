@@ -87,6 +87,28 @@ handler = logging.FileHandler('parallel_abus.log')
 parallel_abus.configure_logging(level=logging.DEBUG, handler=handler)
 ```
 
+### Module-Specific Logging Levels
+
+You can set different logging levels for different modules within the library:
+
+```python
+import logging
+import parallel_abus
+
+# Set DEBUG level for aBUS_SuS modules, WARNING level for aCS modules
+parallel_abus.configure_module_logging({
+    'aBUS_SuS': logging.DEBUG,
+    'aCS': logging.WARNING
+})
+
+# You can also use full logger names for fine-grained control
+parallel_abus.configure_module_logging({
+    'parallel_abus.aBUS_SuS.aBUS_SuS': logging.DEBUG,
+    'parallel_abus.aBUS_SuS.aCS_aBUS': logging.WARNING,
+    'parallel_abus.aBUS_SuS.aCS_aBUS_parallel': logging.ERROR
+})
+```
+
 ### Log Levels
 
 - **DEBUG**: Detailed algorithm state, parameter values, and intermediate results

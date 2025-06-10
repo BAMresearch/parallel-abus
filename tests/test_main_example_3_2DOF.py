@@ -39,7 +39,7 @@ from parallel_abus.aBUS_SuS import aBUS_SuS, aBUS_SuS_parallel
 from parallel_abus.aBUS_SuS.utils import TimerContext
 from parallel_abus.ERADistNataf import ERADist, ERANataf
 
-import shear_building_2DOF
+from . import shear_building_2DOF
 
 plt.close("all")
 
