@@ -234,12 +234,11 @@ def aBUS_SuS_parallel(
 
     # aBUS-SuS procedure
     # initial MCS step
-    with TimerContext():
+    with TimerContext("Done inital evaluation of log-likelihood function"):
         logger.info("Evaluating log-likelihood function ...")
         u_j = np.random.normal(size=(n, N))  # N samples from the prior distribution
         leval = log_L_fun([(u_j[:, i].reshape(-1, 1)) for i in range(N)])
         leval = np.array(leval)
-        logger.info("Done!")
         logl_hat = max(leval)  # =-log(c) (Ref.1 Alg.5 Part.3)
         logger.info(f"Initial maximum log-likelihood: {logl_hat}")
         if logl_hat > REALMAX:
@@ -251,7 +250,7 @@ def aBUS_SuS_parallel(
     h[i] = np.inf
     try:
         while h[i] > 0:
-            with TimerContext():
+            with TimerContext(f"SuS stage {i}"):
                 # increase counter
                 i += 1
 
@@ -321,17 +320,9 @@ def aBUS_SuS_parallel(
                     )
                 else:
                     raise ValueError(f"Unknown type of distribution: {type(distr)}.")
-                print(
-                    "\t*aCS lambda =",
-                    lam,
-                    "\t*aCS sigma =",
-                    sigma[0],
-                    "\t*aCS accrate =",
-                    accrate,
-                )
-                logger.debug(f"*aCS lambda = {lam:.4g}")
-                logger.debug(f"*aCS sigma = {sigma[0]}")
-                logger.debug(f"*aCS accrate = {accrate:.2g}")
+                logger.info(f"*aCS lambda = {lam:.4g}")
+                logger.info(f"*aCS sigma = {sigma[0]}")
+                logger.info(f"*aCS accrate = {accrate:.2g}")
 
                 # update the value of the scaling constant (Ref.1 Alg.5 Part.4d)
                 max_leval = max(leval)
@@ -341,7 +332,6 @@ def aBUS_SuS_parallel(
                 logger.debug(f"logl_new: {l_new}")
                 h[i] = h[i] - logl_hat + l_new
                 logl_hat = l_new
-                print(f" Modified threshold level {i} = {h[i]:.4g}")
                 logger.info(f" Modified threshold level {i} = {h[i]:.4g}")
                 if logl_hat > REALMAX:
                     logger.warning(
@@ -393,6 +383,8 @@ def aBUS_SuS_parallel(
                     )
                 )
             except Exception as err2:
+                # import IPython
+                # IPython.embed()
                 logger.error(
                     f"Error transforming samples to physical space: {err2}\nThis error is ignored, since another one occured prior"
                 )

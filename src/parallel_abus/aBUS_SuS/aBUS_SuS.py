@@ -133,71 +133,73 @@ def aBUS_SuS(N, p0, log_likelihood, distr, max_it: int = 50):
 
     # aBUS-SuS procedure
     # initial MCS step
-    logger.info("Evaluating log-likelihood function ...")
-    u_j = np.random.normal(size=(n, N))  # N samples from the prior distribution
-    leval = [log_L_fun(u_j[:, i]) for i in range(N)]
-    leval = np.array(leval)
-    logger.info("Done!")
-    logl_hat = max(leval)  # =-log(c) (Ref.1 Alg.5 Part.3)
-    logger.info(f"Initial maximum log-likelihood: {logl_hat}")
+    with TimerContext("Done inital evaluation of log-likelihood function"):
+        logger.info("Evaluating log-likelihood function ...")
+        u_j = np.random.normal(size=(n, N))  # N samples from the prior distribution
+        leval = [log_L_fun(u_j[:, i]) for i in range(N)]
+        leval = np.array(leval)
+        logl_hat = max(leval)  # =-log(c) (Ref.1 Alg.5 Part.3)
+        logger.info(f"Initial maximum log-likelihood: {logl_hat}")
 
     # SuS stage
     h[i] = np.inf
     while h[i] > 0:
-        # increase counter
-        i += 1
+        with TimerContext(f"SuS stage {i}"):
 
-        # compute the limit state function (Ref.1 Eq.12)
-        geval = h_LSF(u_j[-1, :], logl_hat, leval)  # evaluate LSF (Ref.1 Eq.12)
+            # increase counter
+            i += 1
 
-        # sort values in ascending order
-        idx = np.argsort(geval)
-        # gsort[j,:] = geval[idx]
+            # compute the limit state function (Ref.1 Eq.12)
+            geval = h_LSF(u_j[-1, :], logl_hat, leval)  # evaluate LSF (Ref.1 Eq.12)
 
-        # order the samples according to idx
-        u_j_sort = u_j[:, idx]
-        samplesU["total"].append(u_j_sort.T)  # store the ordered samples
+            # sort values in ascending order
+            idx = np.argsort(geval)
+            # gsort[j,:] = geval[idx]
 
-        # intermediate level
-        h[i] = np.percentile(geval, p0 * 100, method="midpoint")
+            # order the samples according to idx
+            u_j_sort = u_j[:, idx]
+            samplesU["total"].append(u_j_sort.T)  # store the ordered samples
 
-        # number of failure points in the next level
-        nF = int(sum(geval <= max(h[i], 0)))
+            # intermediate level
+            h[i] = np.percentile(geval, p0 * 100, method="midpoint")
 
-        # assign conditional probability to the level
-        if h[i] < 0:
-            h[i] = 0
-            prob[i - 1] = nF / N
-        else:
-            prob[i - 1] = p0
-        logger.info(f"Threshold level {i} = {h[i]:.4g}")
+            # number of failure points in the next level
+            nF = int(sum(geval <= max(h[i], 0)))
 
-        # select seeds and randomize the ordering (to avoid bias)
-        seeds = u_j_sort[:, :nF]
-        idx_rnd = np.random.permutation(nF)
-        rnd_seeds = seeds[:, idx_rnd]  # non-ordered seeds
-        samplesU["seeds"].append(seeds.T)  # store seeds
+            # assign conditional probability to the level
+            if h[i] < 0:
+                h[i] = 0
+                prob[i - 1] = nF / N
+            else:
+                prob[i - 1] = p0
+            logger.info(f"Threshold level {i} = {h[i]:.4g}")
 
-        # sampling process using adaptive conditional sampling
-        u_j, leval, lam, sigma, accrate = aCS_aBUS(
-            N, lam, h[i], rnd_seeds, log_L_fun, logl_hat, h_LSF
-        )
-        logger.debug(f"*aCS lambda = {lam:.4g}")
-        logger.debug(f"*aCS sigma = {sigma[0]}")
-        logger.debug(f"*aCS accrate = {accrate:.2g}")
+            # select seeds and randomize the ordering (to avoid bias)
+            seeds = u_j_sort[:, :nF]
+            idx_rnd = np.random.permutation(nF)
+            rnd_seeds = seeds[:, idx_rnd]  # non-ordered seeds
+            samplesU["seeds"].append(seeds.T)  # store seeds
 
-        # update the value of the scaling constant (Ref.1 Alg.5 Part.4d)
-        l_new = max(logl_hat, max(leval))
-        h[i] = h[i] - logl_hat + l_new
-        logl_hat = l_new
-        logger.info(f" Modified threshold level {i} = {h[i]:.4g}")
+            # sampling process using adaptive conditional sampling
+            u_j, leval, lam, sigma, accrate = aCS_aBUS(
+                N, lam, h[i], rnd_seeds, log_L_fun, logl_hat, h_LSF
+            )
+            logger.info(f"*aCS lambda = {lam:.4g}")
+            logger.info(f"*aCS sigma = {sigma[0]}")
+            logger.info(f"*aCS accrate = {accrate:.2g}")
 
-        # decrease the dependence of the samples (Ref.1 Alg.5 Part.4e)
-        p = np.random.uniform(
-            low=np.zeros(N),
-            high=np.min([np.ones(N), np.exp(leval - logl_hat + h[i])], axis=0),
-        )
-        u_j[-1, :] = sp.stats.norm.ppf(p)  # to the standard space
+            # update the value of the scaling constant (Ref.1 Alg.5 Part.4d)
+            l_new = max(logl_hat, max(leval))
+            h[i] = h[i] - logl_hat + l_new
+            logl_hat = l_new
+            logger.info(f" Modified threshold level {i} = {h[i]:.4g}")
+
+            # decrease the dependence of the samples (Ref.1 Alg.5 Part.4e)
+            p = np.random.uniform(
+                low=np.zeros(N),
+                high=np.min([np.ones(N), np.exp(leval - logl_hat + h[i])], axis=0),
+            )
+            u_j[-1, :] = sp.stats.norm.ppf(p)  # to the standard space
 
     # number of intermediate levels
     m = i

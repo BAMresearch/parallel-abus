@@ -89,7 +89,11 @@ parallel_abus.configure_logging(level=logging.DEBUG, handler=handler)
 
 ### Module-Specific Logging Levels
 
-You can set different logging levels for different modules within the library:
+You can set different logging levels for different modules within the library. There are two approaches depending on your needs:
+
+#### Using Helper Functions (Recommended for Simple Cases)
+
+Use `configure_module_logging()` when you want the same handler(s) with different levels:
 
 ```python
 import logging
@@ -108,6 +112,49 @@ parallel_abus.configure_module_logging({
     'parallel_abus.aBUS_SuS.aCS_aBUS_parallel': logging.ERROR
 })
 ```
+
+#### Direct Logger Configuration (For Complex Cases)
+
+Use direct configuration when you need different handlers per module:
+
+```python
+import logging
+
+# Example: aBUS messages to console + file, aCS messages only to file
+file_handler = logging.FileHandler('inference.log')
+console_handler = logging.StreamHandler()
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Configure aBUS modules (INFO level) - console + file output
+abus_logger = logging.getLogger('parallel_abus.aBUS_SuS.aBUS_SuS')
+abus_logger.handlers.clear()
+abus_logger.addHandler(console_handler)  # Show progress on console
+abus_logger.addHandler(file_handler)     # Also save to file
+abus_logger.setLevel(logging.INFO)
+abus_logger.propagate = False
+
+# Configure aCS modules (DEBUG level) - file output only
+acs_logger = logging.getLogger('parallel_abus.aBUS_SuS.aCS_aBUS')
+acs_logger.handlers.clear()
+acs_logger.addHandler(file_handler)      # Only save to file
+acs_logger.setLevel(logging.DEBUG)
+acs_logger.propagate = False
+```
+
+#### Choosing the Right Approach
+
+- **Use helper functions** (`configure_module_logging`) when:
+  - All modules use the same handler(s)
+  - You only need different logging levels
+  - You want convenient bulk configuration
+
+- **Use direct configuration** when:
+  - Different modules need different handlers
+  - You need granular control over handler behavior
+  - You have complex logging requirements
 
 ### Log Levels
 
