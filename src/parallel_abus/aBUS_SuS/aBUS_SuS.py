@@ -4,6 +4,7 @@ import scipy as sp
 
 from ..ERADistNataf import ERADist, ERANataf
 from .aCS_aBUS import aCS_aBUS
+from .utils import TimerContext
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
