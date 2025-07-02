@@ -1,13 +1,15 @@
 # import of modules
+from typing import Sequence
+
 import numpy as np
 from scipy import stats
 from .ERADist import ERADist
 from .ERACond import ERACond
-import matplotlib.pyplot as plt
 
+has_networkx = True
 try:
     import networkx as nx
-    has_networkx = True
+    import matplotlib.pyplot as plt
 except ImportError:
     has_networkx = False
 
@@ -90,7 +92,7 @@ class ERARosen(object):
     handle of the respective ERACond object.
     """
     
-    def __init__(self, dist, depend):
+    def __init__(self, dist: Sequence[ERADist | ERACond], depend: Sequence[Sequence[int]]):
         """
         Constructor method, for more details have a look at the
         class description.
@@ -114,7 +116,7 @@ class ERARosen(object):
         # build adjacency matrix
         adj_mat = np.zeros([n_dist,n_dist])
         for i in range(n_dist):
-            adj_mat[i,depend[i]] = 1
+            adj_mat[i,depend[i].astype(int)] = 1
         # check if obtained network represents a directed acyclical graph 
         adj_prod = np.identity(n_dist)
         for i in range(n_dist+1):
@@ -212,13 +214,13 @@ class ERARosen(object):
                 
         # check of the dimensions of input U  
         if U.ndim > 2:
-            raise RuntimeError("U must have not more than two dimensions. ")
+            raise RuntimeError(f"U must have not more than two dimensions. U.ndim: {U.ndim}")
         if np.shape(U)[1] == 1 and n_dim != 1:
             # in case that only one point X is given, he can be defined either as row or column vector
             U = U.T
         if np.shape(U)[1] != n_dim:
-            raise RuntimeError("U must be an array of size [n,d], where d is the"
-                               " number of dimensions of the joint distribution.")
+            raise RuntimeError(f"U must be an array of size [d, n], where d is the"
+                               f" number of dimensions of the joint distribution. U.shape: {U.shape}")
             
         n_U = np.shape(U)[0]
         X = np.zeros([n_U,n_dim])
@@ -321,6 +323,7 @@ class ERARosen(object):
         """
         if not has_networkx:
             raise RuntimeError("NetworkX is not installed. Please install it using `pip install networkx` or `pip install parallel-abus[networkx]`.")
+        networkx_major_version = int(nx.__version__.split(".")[0])
 
         n_layer = len(self.Layers)
         vert = np.flip(np.linspace(0,1,n_layer))
@@ -347,8 +350,12 @@ class ERARosen(object):
                 labels[i] = '#'+str(i)
         else:
             raise RuntimeError("opt must be given as 'numbering'.")
-                
-        G_Adj = nx.from_numpy_matrix(self.Adjacency)
+
+        if networkx_major_version < 3:
+            G_Adj = nx.from_numpy_matrix(self.Adjacency)
+        else:
+            G_Adj = nx.from_numpy_array(self.Adjacency)
+
         G = nx.DiGraph()
         for i in range(1,n_layer):
             cur_l = self.Layers[i]
@@ -359,7 +366,9 @@ class ERARosen(object):
                     G.add_edge(str(s_n[k]),str(cur_l[j]))
             
         nx.draw(G, pos_n,node_color='k',alpha = 0.3,node_size=100,arrowsize=20,arrows=True)
-        nx.draw_networkx_labels(G_Adj,pos_l,labels,colors='r',font_size=15)
+        nx.draw_networkx_labels(G_Adj,pos_l,labels,font_color='r',font_size=15)
         plt.xlim([-0.05,1.05])
         plt.ylim([-0.1,1.1])
         plt.show()
+
+# %%
