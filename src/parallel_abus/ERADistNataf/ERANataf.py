@@ -308,13 +308,13 @@ class ERANataf(object):
         
         # check of the dimensions of input U  
         if U.ndim > 2:
-            raise RuntimeError("U must have not more than two dimensions. ")
+            raise RuntimeError(f"U must have not more than two dimensions. U.ndim: {U.ndim}")
         if np.shape(U)[1] == 1 and n_dim != 1:
             # in case that only one point U is given, he can be defined either as row or column vector
             U = U.T
         if np.shape(U)[1] != n_dim:
-            raise RuntimeError("U must be an array of size [n,d], where d is the"
-                               " number of dimensions of the joint distribution.")
+            raise RuntimeError(f"U must be an array of size [d, n], where d is the"
+                               f" number of dimensions of the joint distribution. U.shape: {U.shape}")
         else:
             U = U.T
         Z = self.A @ U

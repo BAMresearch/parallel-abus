@@ -336,6 +336,7 @@ class ERACond(object):
                 Par = [a_n, k]
         
         for i in range(0,len(Par)):
+            # TODO: Change this to immutable data types
             Par[i] = np.squeeze(Par[i])
             
         return Par        
