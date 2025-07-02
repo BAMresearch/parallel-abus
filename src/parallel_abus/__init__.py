@@ -9,6 +9,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 from .ERADistNataf import ERADist, ERANataf
 from .aBUS_SuS import aBUS_SuS, aBUS_SuS_parallel, ErrorWithData
 
+from .__about__ import __version__
 
 def configure_logging(level=logging.WARNING, handler=None):
     """Configure logging for the parallel_abus library.
