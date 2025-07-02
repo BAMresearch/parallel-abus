@@ -6,7 +6,7 @@ import logging
 # Ensure the library doesn't emit logging warnings if no handler is configured
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-from .ERADistNataf import ERADist, ERANataf
+from .ERADistNataf import ERADist, ERANataf, ERACond, ERARosen
 from .aBUS_SuS import aBUS_SuS, aBUS_SuS_parallel, ErrorWithData
 
 from .__about__ import __version__
