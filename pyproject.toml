@@ -32,7 +32,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python=">=3.8"
+python=">=3.10,<3.11"
 numpy=">=1.22"
 scipy=">=1.6"
 
@@ -46,3 +46,5 @@ pandas = "~2"
 [tool.poetry.group.dev.dependencies]
 jupyter = "~1"
 mypy = "^1.9.0"
+pymc = "^5.23.0"
+arviz = "^0.21.0"

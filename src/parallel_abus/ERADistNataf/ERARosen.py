@@ -1,10 +1,15 @@
 # import of modules
 import numpy as np
 from scipy import stats
-from ERADist import ERADist
-from ERACond import ERACond
-import networkx as nx
+from .ERADist import ERADist
+from .ERACond import ERACond
 import matplotlib.pyplot as plt
+
+try:
+    import networkx as nx
+    has_networkx = True
+except ImportError:
+    has_networkx = False
 
 '''
 ---------------------------------------------------------------------------
@@ -314,7 +319,9 @@ class ERARosen(object):
         position in dist, otherwise the property ID is taken as the
         name of the distribution.
         """
-        
+        if not has_networkx:
+            raise RuntimeError("NetworkX is not installed. Please install it using `pip install networkx` or `pip install parallel-abus[networkx]`.")
+
         n_layer = len(self.Layers)
         vert = np.flip(np.linspace(0,1,n_layer))
         pos_n = dict()
