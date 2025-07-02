@@ -2,6 +2,8 @@ import logging
 import numpy as np
 import scipy as sp
 
+from parallel_abus.ERADistNataf import ERARosen
+
 from ..ERADistNataf import ERADist, ERANataf
 from .aCS_aBUS import aCS_aBUS
 from .utils import TimerContext
@@ -98,6 +100,10 @@ def aBUS_SuS(N, p0, log_likelihood, distr, max_it: int = 50):
         )  # number of random variables + p Uniform variable of BUS
         u2x = lambda u: distr.U2X(u)  # from u to x
 
+    elif isinstance(distr, ERARosen):
+        n = len(distr.Dist) + 1  # number of random variables + p Uniform variable of BUS
+        u2x = lambda u: distr.U2X(u)
+
     elif isinstance(
         distr[0], ERADist
     ):  # use distribution information for the transformation (independence)
@@ -106,8 +112,8 @@ def aBUS_SuS(N, p0, log_likelihood, distr, max_it: int = 50):
         n = len(distr) + 1  # number of random variables + p Uniform variable of BUS
         u2x = lambda u: distr[0].icdf(sp.stats.norm.cdf(u))  # from u to x
     else:
-        raise RuntimeError(
-            "Incorrect distribution. Please create an ERADist/Nataf object!"
+        raise ValueError(
+            "Incorrect distribution. `distr` must be an ERADist, ERARosen, or ERANataf object!"
         )
 
     # limit state funtion for the observation event (Ref.1 Eq.12)
