@@ -2,7 +2,6 @@
 import numpy as np
 from scipy import optimize, stats, special, integrate
 import types
-import inspect
 
 '''
 ---------------------------------------------------------------------------
