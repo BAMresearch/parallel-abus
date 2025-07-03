@@ -106,12 +106,14 @@ class ERARosen(object):
             raise RuntimeError("The number of distributions according to the inputs"
                                " dist and depend doesn't match.")
         
-        n_parents = np.zeros(n_dist)
-        for i in range(n_dist):
-            if isinstance(dist[i],ERACond):
-                n_parents[i] = dist[i].Param.__code__.co_argcount
-            elif not isinstance(dist[i],ERADist):
-                raise RuntimeError("The objects in dist must be either ERADist or ERACond objects.")
+        # n_parents = np.zeros(n_dist, dtype=int)
+        # for i in range(n_dist):
+        #     if isinstance(dist[i],ERACond):
+        #         # TODO: i think this is wrong.
+        #         n_parents[i] = dist[i].Param.__code__.co_argcount
+        #         # print(f"n_parents[{i}]: {n_parents[i]}")
+        #     elif not isinstance(dist[i],ERADist):
+        #         raise RuntimeError("The objects in dist must be either ERADist or ERACond objects.")
         
         # build adjacency matrix
         adj_mat = np.zeros([n_dist,n_dist])
