@@ -1,7 +1,8 @@
 # import of modules
+from collections.abc import Callable
+
 import numpy as np
 from scipy import optimize, stats, special, integrate
-import types
 
 '''
 ---------------------------------------------------------------------------
@@ -135,16 +136,18 @@ class ERACond(object):
         if opt.upper() == "PAR" or opt.upper() == "MOM":
             self.Opt = opt.upper()
         else:
-            raise RuntimeError("Conditional distributions can only be defined "
-                               "by moments (opt = 'MOM') or by parameters (opt = 'PAR').")
+            raise ValueError("Conditional distributions can only be defined "
+                               "by moments (opt = 'MOM') or by parameters (opt = 'PAR')."
+                               f"but got: {opt}")
             
         self.ID = ID
         
         # check if param is a lambda function
-        if type(param) == types.LambdaType:
+        if isinstance(param, Callable):
             self.Param = param
+     
         else:
-            raise RuntimeError("The input param must be a lambda function.")
+            raise ValueError("The input param must be a lambda expression, function, or partial function.")
 
         self.modParam = param          
             
@@ -161,6 +164,7 @@ class ERACond(object):
         """
         
         cond = np.array(cond, ndmin=2, dtype=float).T
+        # print(f"cond: {cond}")
         par = self.modParam(cond)
         n_cond = np.shape(cond)[0]
         
@@ -335,11 +339,12 @@ class ERACond(object):
                         k[i] = np.nan; a_n[i] = np.nan;
                 Par = [a_n, k]
         
-        for i in range(0,len(Par)):
-            # TODO: Change this to immutable data types
-            Par[i] = np.squeeze(Par[i])
+        # for i in range(0,len(Par)):
+        #     # TODO: Change this to immutable data types
+        #     Par[i] = np.squeeze(Par[i])
+        returned_par = tuple(np.array(par) for par in Par)
             
-        return Par        
+        return returned_par        
         
 #%%
     def condCDF(self,x,cond):
