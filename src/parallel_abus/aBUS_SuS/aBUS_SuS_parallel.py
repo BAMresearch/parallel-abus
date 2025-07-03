@@ -41,12 +41,11 @@ Based on:
 import logging
 import multiprocessing
 from functools import partial
-from typing import Any, Tuple
 
 import numpy as np
 import scipy as sp
 
-from parallel_abus.ERADistNataf import ERADist, ERANataf
+from parallel_abus.ERADistNataf import ERADist, ERANataf, ERARosen
 from .aCS_aBUS_parallel import aCS_aBUS_batches as aCS_aBUS
 from .utils import TimerContext
 
@@ -102,8 +101,8 @@ def u2x_distr(distr: ERADist, u):
     return distr.icdf(sp.stats.norm.cdf(u))  # from u to x
 
 
-def u2x_nataf(nataf: ERANataf, u):
-    return nataf.U2X(u)
+def u2x_transformation(transformation: ERANataf | ERARosen, u):
+    return transformation.U2X(u)
 
 
 def aBUS_SuS_parallel(
@@ -125,10 +124,11 @@ def aBUS_SuS_parallel(
     Args:
         N (int): Number of samples per subset level. Must be such that N*p0 and 1/p0 are integers.
         p0 (float): Probability of each subset level. Must be between 0 and 1.
-        indexed_log_likelihood_fun (Callable): Function that takes (index, theta) and returns (index, log_likelihood).
+        indexed_log_likelihood_fun (Callable): Function that takes a tuple of (index, theta) and returns a tuple of (index, log_likelihood).
             The index is used to track the order of samples.
-        distr (Union[ERANataf, List[ERADist]]): Distribution object. Can be either:
+        distr (Union[ERANataf, ERARosen, List[ERADist]]): Distribution object. Can be either:
             - ERANataf: For dependent random variables
+            - ERARosen: For conditional random variables
             - List[ERADist]: For independent random variables
         pool (multiprocessing.pool.Pool): Multiprocessing pool for parallel evaluation
         opc (str, optional): Option for the algorithm. Defaults to "b".
@@ -160,7 +160,13 @@ def aBUS_SuS_parallel(
             len(distr.Marginals) + 1
         )  # number of random variables + p Uniform variable of BUS
 
-        std_to_physical = partial(u2x_nataf, distr)
+        std_to_physical = partial(u2x_transformation, distr)
+
+    elif isinstance(distr, ERARosen):
+        # raise NotImplementedError("ERARosen is not implemented yet.")
+        n = len(distr.Dist) + 1
+        std_to_physical = partial(u2x_transformation, distr)
+        # std_to_physical = lambda u: distr.U2X(u)
 
     elif isinstance(
         distr[0], ERADist
@@ -171,8 +177,8 @@ def aBUS_SuS_parallel(
 
         std_to_physical = partial(u2x_distr, distr[0])
     else:
-        raise RuntimeError(
-            "Incorrect distribution. Please create an ERADist/Nataf object!"
+        raise ValueError(
+            "Incorrect distribution. `distr` must be an ERADist, ERARosen, or ERANataf object!"
         )
 
     # def indexed_log_likelihood_fun(index: int, theta: Any) -> Tuple[int, float]:
@@ -181,8 +187,8 @@ def aBUS_SuS_parallel(
 
     def log_L_fun(u):
         n_samples = len(u)
-        if isinstance(distr, ERANataf):
-            x = [u2x_nataf(distr, u_i[0 : n - 1]).flatten() for u_i in u]
+        if isinstance(distr, ERANataf) or isinstance(distr, ERARosen):
+            x = [u2x_transformation(distr, u_i[0 : n - 1]).flatten() for u_i in u]
         elif isinstance(distr[0], ERADist):
             x = [u2x_distr(distr[0], u_i[0 : n - 1]).flatten() for u_i in u]
         else:
@@ -292,7 +298,7 @@ def aBUS_SuS_parallel(
                 samplesU["seeds"].append(seeds.T)  # store ordered seeds
 
                 # sampling process using adaptive conditional sampling
-                if isinstance(distr, ERANataf):
+                if isinstance(distr, ERANataf) or isinstance(distr, ERARosen):
                     u_j, leval, lam, sigma, accrate = aCS_aBUS(
                         N,
                         lam,
@@ -301,7 +307,7 @@ def aBUS_SuS_parallel(
                         indexed_log_likelihood_fun,
                         logl_hat,
                         h_LSF,
-                        partial(u2x_nataf, distr),
+                        partial(u2x_transformation, distr),
                         pool,
                         opc=opc,
                     )
