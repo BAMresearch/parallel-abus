@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "parallel-abus"
-version = "0.2.0"
+version = "0.2.1"
 description = ''
 readme = "README.md"
 # requires-python = ">=3.8"
@@ -32,7 +32,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python=">=3.10,<3.11"
+python=">=3.10,<3.13"
 numpy=">=1.22"
 scipy=">=1.6"
 networkx = {version = ">=3.0", optional = true}
