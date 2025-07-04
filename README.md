@@ -19,7 +19,8 @@
 
 This code is a Python implementation of the parallelized adaptive Bayesian Updating with Structural reliabilty methods. The methods were described in:
 
-> Simon, P., Schneider, R., Baeßler, M., Morgenthal, G., 2024. Parallelized adaptive Bayesian Updating with Structural reliability methods for inference of large engineering models (submitted for publication).
+> Simon, P., Schneider, R., Baeßler, M., & Morgenthal, G. (2025). Parallelized adaptive Bayesian updating with structural reliability methods for inference of large engineering models. Advances in Structural Engineering, 13694332251346848. https://doi.org/10.1177/13694332251346848
+
 
 It is based upon the [original Python implementation](https://www.cee.ed.tum.de/era/software/bayesian/abus/) of the original adaptive Bayesian Updating with Structural reliability methods with Subset Simulation (aBUS-SuS) by the Engineering Risk Analysis (ERA) Group of Technische Universität München.
 
