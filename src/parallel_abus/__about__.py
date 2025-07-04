@@ -1,4 +1,4 @@
 # SPDX-FileCopyrightText: 2024-present psimon1 <patrick.simon@bam.de>
 #
 # SPDX-License-Identifier: MIT
-__version__ = "0.1.6"
+__version__ = "0.2.0"
